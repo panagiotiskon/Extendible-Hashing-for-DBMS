@@ -69,12 +69,11 @@ int main() {
   int indexDesc;
   CALL_OR_DIE(HT_CreateIndex(FILE_NAME, GLOBAL_DEPT));
   CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc)); 
-
-  // Record record;
-  // srand(12569874);
-  // int r;
-  // printf("Insert Entries\n");
-  // for (int id = 0; id < RECORDS_NUM; ++id) {
+  Record record;
+  srand(12569874);
+  int r;
+  printf("Insert Entries\n");
+  // for (int id = 0; id < 1; ++id) {
   //   // create a record
   //   record.id = id;
   //   r = rand() % 12;

@@ -13,7 +13,23 @@ typedef struct Record {
 	char city[20];
 } Record;
 
-int* ht_files;
+typedef struct HT_info
+{
+	char type[5];
+	int file_desc;
+	int bucket_num;
+	int *hash_table;
+
+} HT_info;
+
+typedef struct HT_Block_info
+{
+	int records;
+	int max_records; 
+	
+} HT_Block_info;
+
+HT_info* hash_file_array;
 
 /*
  * Η συνάρτηση HT_Init χρησιμοποιείται για την αρχικοποίηση κάποιον δομών που μπορεί να χρειαστείτε. 
