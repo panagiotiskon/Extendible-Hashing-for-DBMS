@@ -6,76 +6,76 @@
 #include "hash_file.h"
 
 #define RECORDS_NUM 1000 // you can change it if you want
-#define GLOBAL_DEPT 2 // you can change it if you want
+#define GLOBAL_DEPT 2    // you can change it if you want
 #define FILE_NAME "data.db"
 
-const char* names[] = {
-  "Yannis",
-  "Christofos",
-  "Sofia",
-  "Marianna",
-  "Vagelis",
-  "Maria",
-  "Iosif",
-  "Dionisis",
-  "Konstantina",
-  "Theofilos",
-  "Giorgos",
-  "Dimitris"
-};
+const char *names[] = {
+    "Yannis",
+    "Christofos",
+    "Sofia",
+    "Marianna",
+    "Vagelis",
+    "Maria",
+    "Iosif",
+    "Dionisis",
+    "Konstantina",
+    "Theofilos",
+    "Giorgos",
+    "Dimitris"};
 
-const char* surnames[] = {
-  "Ioannidis",
-  "Svingos",
-  "Karvounari",
-  "Rezkalla",
-  "Nikolopoulos",
-  "Berreta",
-  "Koronis",
-  "Gaitanis",
-  "Oikonomou",
-  "Mailis",
-  "Michas",
-  "Halatsis"
-};
+const char *surnames[] = {
+    "Ioannidis",
+    "Svingos",
+    "Karvounari",
+    "Rezkalla",
+    "Nikolopoulos",
+    "Berreta",
+    "Koronis",
+    "Gaitanis",
+    "Oikonomou",
+    "Mailis",
+    "Michas",
+    "Halatsis"};
 
-const char* cities[] = {
-  "Athens",
-  "San Francisco",
-  "Los Angeles",
-  "Amsterdam",
-  "London",
-  "New York",
-  "Tokyo",
-  "Hong Kong",
-  "Munich",
-  "Miami"
-};
+const char *cities[] = {
+    "Athens",
+    "San Francisco",
+    "Los Angeles",
+    "Amsterdam",
+    "London",
+    "New York",
+    "Tokyo",
+    "Hong Kong",
+    "Munich",
+    "Miami"};
 
 #define CALL_OR_DIE(call)     \
   {                           \
     HT_ErrorCode code = call; \
-    if (code != HT_OK) {      \
+    if (code != HT_OK)        \
+    {                         \
       printf("Error\n");      \
       exit(code);             \
     }                         \
   }
 
-int main() {
+int main()
+{
   BF_Init(LRU);
-  
+
   CALL_OR_DIE(HT_Init());
 
   int indexDesc;
   CALL_OR_DIE(HT_CreateIndex(FILE_NAME, GLOBAL_DEPT));
-  CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc)); 
+  CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc));
   Record record;
   srand(12569874);
   int r;
   printf("Insert Entries\n");
-  for (int id = 0; id < 10; ++id) {
+  for (int id = 0; id < 12; ++id)
+  {
     // create a record
-    record.id = 5;
+    record.id = 3;
     r = rand() % 12;
     memcpy(record.name, names[r], strlen(names[r]) + 1);
     r = rand() % 12;

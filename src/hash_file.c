@@ -16,6 +16,7 @@
       return HT_ERROR;        \
     }                         \
   }
+HT_info *hash_file_array;
 
 HT_ErrorCode HT_Init()
 {
@@ -50,6 +51,8 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
   strcpy(ht_info.type, "hash");
   ht_info.file_desc = file_desc;
   ht_info.bucket_num = num_of_blocks;
+  ht_info.global_depth = depth;
+
   int *ht = malloc(num_of_blocks * sizeof(int));
 
   // first block contains metadata for the hash table, so skip it
@@ -94,7 +97,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
 
     bf_info.max_records = floor((BF_BLOCK_SIZE - sizeof(HT_Block_info *)) / sizeof(Record));
     bf_info.records = 0;
-
+    bf_info.local_depth = 1;
     memcpy(temp_data, &bf_info, sizeof(HT_Block_info));
 
     BF_Block_SetDirty(temp_block); // set the block dirty
@@ -151,7 +154,8 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
   int hash_key;
   int max_rec;
   int curr_rec;
-
+  int global_depth;
+  int local_depth;
   BF_Block *temp_block;
   BF_Block_Init(&temp_block);
   CALL_BF(BF_GetBlock(indexDesc, 0, temp_block));
@@ -167,10 +171,13 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
   memcpy(ht_info, data, sizeof(HT_info));
 
   total_buckets = ht_info->bucket_num;
-
+  global_depth = ht_info->global_depth;
+  BF_Block_SetDirty(temp_block);
+  CALL_BF(BF_UnpinBlock(temp_block));
+  BF_Block_Destroy(&temp_block);
   // get hash key
 
-  hash_key = Hash_Function(record.id, total_buckets);
+  hash_key = reverseBits(bitExtracted(record.id, global_depth, 1), global_depth);
 
   printf("%d %d %d\n", hash_key, record.id, total_buckets);
 
@@ -184,7 +191,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   BF_Block *bucket;
   BF_Block_Init(&bucket);
-  CALL_BF(BF_GetBlock(indexDesc, p[hash_key] + 1, bucket));
+  CALL_BF(BF_GetBlock(indexDesc, p[hash_key], bucket));
   void *bucket_data;
   bucket_data = BF_Block_GetData(bucket);
   HT_Block_info *ht_bucket_info = malloc(sizeof(HT_Block_info));
@@ -192,28 +199,42 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   max_rec = ht_bucket_info->max_records;
   curr_rec = ht_bucket_info->records;
+  local_depth = ht_bucket_info->local_depth;
+  printf("curr %d\n", curr_rec);
 
-  printf("curr %d\n", curr_rec); 
-
-  if (curr_rec < max_rec)
+  if (curr_rec < max_rec) // if record can fit into the bucket
   {
-
     ht_bucket_info->records++;
     memcpy(bucket_data, ht_bucket_info, sizeof(HT_Block_info));
     // calculate offset to put new record
-  
-    bucket_data += sizeof(HT_Block_info)+(sizeof(Record)*curr_rec); 
-    
+
+    bucket_data += sizeof(HT_Block_info) + (sizeof(Record) * curr_rec);
+
     memcpy(bucket_data, &record, sizeof(Record));
-    
+
     BF_Block_SetDirty(bucket);
     CALL_BF(BF_UnpinBlock(bucket));
     BF_Block_Destroy(&bucket);
   }
+  else if (curr_rec == max_rec) // if record cant fit into bucket
+  {
+    if (local_depth == global_depth) // then we need to double array's size
+    {
+      global_depth++; // global depth is growing by 1
 
-  BF_Block_SetDirty(temp_block);
-  CALL_BF(BF_UnpinBlock(temp_block));
-  BF_Block_Destroy(&temp_block);
+      int new_hash_table_size = pow(2, global_depth);                             // compute new hash table size
+      int *new_hash_array = (int *)realloc(p, new_hash_table_size * sizeof(int)); // realloc the array
+      p = new_hash_array;
+      for (int i = 0; i < new_hash_table_size; i++)
+      {
+        p[i] = i + 1;
+      }
+    }
+    else if (global_depth > local_depth) // we need to split the current bucket to two buckets
+    {
+    }
+    bucket_data += sizeof(HT_Block_info) + (sizeof(Record) * curr_rec);
+  }
 
   return HT_OK;
 }
@@ -231,7 +252,17 @@ HT_ErrorCode HT_HashStatistics(char *filename)
   return HT_OK;
 }
 
-int Hash_Function(int record_id, int buckets_num)
+int bitExtracted(int number, int k, int p)
 {
-  return record_id % buckets_num;
+  return (((1 << k) - 1) & (number >> (p - 1)));
+}
+int reverseBits(int number, int bits)
+{
+  int reversedNumber = 0;
+  for (int i = 0; i < bits; i++)
+  {
+    reversedNumber = (reversedNumber << 1) | (number & 1);
+    number >>= 1;
+  }
+  return reversedNumber;
 }
