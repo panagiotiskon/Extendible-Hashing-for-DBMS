@@ -73,18 +73,18 @@ int main() {
   srand(12569874);
   int r;
   printf("Insert Entries\n");
-  // for (int id = 0; id < 1; ++id) {
-  //   // create a record
-  //   record.id = id;
-  //   r = rand() % 12;
-  //   memcpy(record.name, names[r], strlen(names[r]) + 1);
-  //   r = rand() % 12;
-  //   memcpy(record.surname, surnames[r], strlen(surnames[r]) + 1);
-  //   r = rand() % 10;
-  //   memcpy(record.city, cities[r], strlen(cities[r]) + 1);
+  for (int id = 0; id < 10; ++id) {
+    // create a record
+    record.id = 5;
+    r = rand() % 12;
+    memcpy(record.name, names[r], strlen(names[r]) + 1);
+    r = rand() % 12;
+    memcpy(record.surname, surnames[r], strlen(surnames[r]) + 1);
+    r = rand() % 10;
+    memcpy(record.city, cities[r], strlen(cities[r]) + 1);
 
-  //   CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
-  // }
+    CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
+  }
 
   // printf("RUN PrintAllEntries\n");
   // int id = rand() % RECORDS_NUM;

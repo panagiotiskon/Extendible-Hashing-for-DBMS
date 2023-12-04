@@ -18,8 +18,6 @@ typedef struct HT_info
 	char type[5];
 	int file_desc;
 	int bucket_num;
-	int *hash_table;
-
 } HT_info;
 
 typedef struct HT_Block_info
@@ -28,6 +26,10 @@ typedef struct HT_Block_info
 	int max_records; 
 	
 } HT_Block_info;
+
+// Hash Function that returns key based on the record id and the total number of buckets
+
+int Hash_Function(int record_id, int buckets_num);
 
 HT_info* hash_file_array;
 
