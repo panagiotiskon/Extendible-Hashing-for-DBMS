@@ -40,6 +40,9 @@ int reverseBits(int number, int bits);
 int* expandingHashTable(int *hashtable, int size);
 int extract_bits(int k);
 
+HT_ErrorCode createBucket(int file_desc, int local_depth); 
+HT_ErrorCode correct_hashtable(int* hashtable, int key, int depth); 
+
 /*
  * Η συνάρτηση HT_Init χρησιμοποιείται για την αρχικοποίηση κάποιον δομών που μπορεί να χρειαστείτε.
  * Σε περίπτωση που εκτελεστεί επιτυχώς, επιστρέφεται HT_OK, ενώ σε διαφορετική περίπτωση κωδικός λάθους.
