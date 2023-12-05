@@ -248,10 +248,14 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
       // update total buckets in file 
       total_buckets++;
       void* new_data = BF_Block_GetData(first_block);
-      memcpy(data, ht_info, sizeof(HT_info));
+      memcpy(new_data, ht_info, sizeof(HT_info));
 
       // update hashtable to show to both buckets
       correct_hashtable(p, hash_key, global_depth); 
+
+      for(int i=0; i<curr_rec; i++){
+        HT_InsertEntry(indexDesc, array_of_record[i]); 
+      }
 
     }
 
