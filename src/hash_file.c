@@ -81,9 +81,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
   BF_Block_Destroy(&block);
 
   // asume that each block can fit one bucket
-
-  int hash_key = -1;
-
+  // at start we have two buckets with local depth of 1
   // for each of the created buckets (blocks) initialize and allocate space
 
   for (int i = 0; i < num_of_blocks; i++)
@@ -156,15 +154,16 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
   int curr_rec;
   int global_depth;
   int local_depth;
-  BF_Block *temp_block;
-  BF_Block_Init(&temp_block);
-  CALL_BF(BF_GetBlock(indexDesc, 0, temp_block));
+
+  BF_Block *first_block;
+  BF_Block_Init(&first_block);
+  CALL_BF(BF_GetBlock(indexDesc, 0, first_block));
 
   HT_info *ht_info = malloc(sizeof(HT_info));
 
   // get first block data
 
-  void *data = BF_Block_GetData(temp_block);
+  void *data = BF_Block_GetData(first_block);
 
   // copy the data of the ht_info struct
 
@@ -172,9 +171,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   total_buckets = ht_info->bucket_num;
   global_depth = ht_info->global_depth;
-  BF_Block_SetDirty(temp_block);
-  CALL_BF(BF_UnpinBlock(temp_block));
-  BF_Block_Destroy(&temp_block);
+
   // get hash key
 
   hash_key = reverseBits(bitExtracted(record.id, global_depth, 1), global_depth);
@@ -192,6 +189,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
   BF_Block *bucket;
   BF_Block_Init(&bucket);
   CALL_BF(BF_GetBlock(indexDesc, p[hash_key], bucket));
+
   void *bucket_data;
   bucket_data = BF_Block_GetData(bucket);
   HT_Block_info *ht_bucket_info = malloc(sizeof(HT_Block_info));
@@ -216,25 +214,35 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
     CALL_BF(BF_UnpinBlock(bucket));
     BF_Block_Destroy(&bucket);
   }
+
   else if (curr_rec == max_rec) // if record cant fit into bucket
   {
     if (local_depth == global_depth) // then we need to double array's size
     {
       global_depth++; // global depth is growing by 1
 
-      int new_hash_table_size = pow(2, global_depth);                             // compute new hash table size
-      int *new_hash_array = (int *)realloc(p, new_hash_table_size * sizeof(int)); // realloc the array
-      p = new_hash_array;
-      for (int i = 0; i < new_hash_table_size; i++)
-      {
-        p[i] = i + 1;
-      }
+      int new_size = pow(2, global_depth); // compute new hash table size
+      int *new_hashtable = expandingHashTable(p, new_size);
+
+      // update global depth
+      data -= sizeof(HT_info);
+      ht_info->global_depth = global_depth;
+      memcpy(data, ht_info, sizeof(HT_info));
+
+      // update new hashtable
+      data += sizeof(HT_info);
+      memcpy(data, new_hashtable, sizeof(new_hashtable));
     }
     else if (global_depth > local_depth) // we need to split the current bucket to two buckets
     {
     }
+
     bucket_data += sizeof(HT_Block_info) + (sizeof(Record) * curr_rec);
   }
+
+  BF_Block_SetDirty(first_block);
+  CALL_BF(BF_UnpinBlock(first_block));
+  BF_Block_Destroy(&first_block);
 
   return HT_OK;
 }
@@ -265,4 +273,31 @@ int reverseBits(int number, int bits)
     number >>= 1;
   }
   return reversedNumber;
+}
+
+// create new hash table and copy the existing information to the new one
+// return the new hash table
+
+int *expandingHashTable(int *hashtable, int size)
+{
+  int pos = -1;
+  int *new_hashtable = malloc(size * sizeof(int));
+  for (int i = 0; i < size; i++)
+  {
+    pos = extract_bits(i);
+    new_hashtable[i] = hashtable[pos];
+  }
+
+  for(int i =0; i<size; i++){
+    printf("new %d", new_hashtable[i]);
+  }
+
+  return new_hashtable;
+}
+
+// extract k-1 bits from k bit number
+
+int extract_bits(int k)
+{
+  return k >> 1;
 }

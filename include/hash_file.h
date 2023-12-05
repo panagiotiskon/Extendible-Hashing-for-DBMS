@@ -36,6 +36,10 @@ typedef struct HT_Block_info
 int bitExtracted(int number, int k, int p);
 int reverseBits(int number, int bits);
 
+
+int* expandingHashTable(int *hashtable, int size);
+int extract_bits(int k);
+
 /*
  * Η συνάρτηση HT_Init χρησιμοποιείται για την αρχικοποίηση κάποιον δομών που μπορεί να χρειαστείτε.
  * Σε περίπτωση που εκτελεστεί επιτυχώς, επιστρέφεται HT_OK, ενώ σε διαφορετική περίπτωση κωδικός λάθους.
