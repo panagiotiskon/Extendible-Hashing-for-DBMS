@@ -72,10 +72,10 @@ int main()
   srand(12569874);
   int r;
   printf("Insert Entries\n");
-  for (int id = 0; id < 9; ++id)
+  for (int id = 0; id < 20; ++id)
   {
     // create a record
-    record.id = 0;
+    record.id = rand() % 30;
     r = rand() % 12;
     memcpy(record.name, names[r], strlen(names[r]) + 1);
     r = rand() % 12;

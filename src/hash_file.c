@@ -86,7 +86,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
 
   for (int i = 0; i < num_of_blocks; i++)
   {
-    createBucket(file_desc, 1); 
+    createBucket(file_desc, 1);
   }
 
   // close the hash file
@@ -162,15 +162,27 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   hash_key = reverseBits(bitExtracted(record.id, global_depth, 1), global_depth);
 
-  printf("eeee %d %d %d %d\n", hash_key, record.id, total_buckets, global_depth);
+  printf("hashed key %d record id %d total buckets %d global depth %d\n\n", hash_key, record.id, total_buckets, global_depth);
 
   // calculate offset
 
   data += sizeof(HT_info);
-  printf("aoaoaoaoaoaoa");
-  int *p = malloc(total_buckets * sizeof(int));
+  int *p = malloc(pow(2, global_depth) * sizeof(int)); // hash table is size of global depth^2
 
   memcpy(&p, data, sizeof(p));
+
+  printf("hash table\n");
+  for (int i = 0; i < pow(2, global_depth); i++)
+  {
+    printf("%d\n", p[i]);
+  }
+  printf("\n\n");
+
+  free(ht_info);
+
+  BF_Block_SetDirty(first_block);
+  CALL_BF(BF_UnpinBlock(first_block));
+  BF_Block_Destroy(&first_block);
 
   BF_Block *bucket;
   BF_Block_Init(&bucket);
@@ -183,7 +195,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
   max_rec = ht_bucket_info->max_records;
   curr_rec = ht_bucket_info->records;
   local_depth = ht_bucket_info->local_depth;
-  printf("curr %d\n", curr_rec);
+  printf("current records into current bucket %d and current bucket %d\n\n", curr_rec, p[hash_key]);
 
   if (curr_rec < max_rec) // if record can fit into the bucket
   {
@@ -194,78 +206,131 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
     bucket_data += sizeof(HT_Block_info) + (sizeof(Record) * curr_rec);
 
     memcpy(bucket_data, &record, sizeof(Record));
-
-    BF_Block_SetDirty(bucket);
-    CALL_BF(BF_UnpinBlock(bucket));
-    BF_Block_Destroy(&bucket);
   }
 
   else if (curr_rec == max_rec) // if record cant fit into bucket
   {
     if (local_depth == global_depth) // then we need to double array's size
     {
-      printf("eoeoeoeoe");
+      BF_Block *new_block;
+      BF_Block_Init(&new_block);
+      CALL_BF(BF_GetBlock(indexDesc, 0, new_block));
+
+      HT_info *new_ht_info = malloc(sizeof(HT_info));
+
+      void *new_data = BF_Block_GetData(new_block);
+
+      memcpy(new_ht_info, new_data, sizeof(HT_info));
+
       global_depth++; // global depth is growing by 1
 
+      new_ht_info->global_depth++;
+
       int new_size = pow(2, global_depth); // compute new hash table size
-      int *new_hashtable = expandingHashTable(p, new_size);
 
-      // update global depth
-      data -= sizeof(HT_info);
-      ht_info->global_depth = global_depth;
-      memcpy(data, ht_info, sizeof(HT_info));
+      memcpy(new_data, new_ht_info, sizeof(HT_info)); // update global depth
 
-      // update new hashtable
-      data += sizeof(HT_info);
-      memcpy(data, new_hashtable, sizeof(new_hashtable));
-      
-      // free old hash table 
-      free(p); 
-      
+      printf("new global depth %d \n\n", global_depth);
+
+      int *new_hashtable = expandingHashTable(p, new_size); // create new array
+
+      new_data += sizeof(HT_info);
+
+      free(p);
+
+      memcpy(new_data, &new_hashtable, sizeof(int *));
+
+      // free old hash table
+      free(new_ht_info);
+      BF_Block_SetDirty(new_block);
+      CALL_BF(BF_UnpinBlock(new_block));
+      BF_Block_Destroy(&new_block);
       HT_InsertEntry(indexDesc, record);
-
     }
     else if (global_depth > local_depth) // we need to split the current bucket to two buckets
-    { 
-      printf("aaaaaaaaaa");
-      // create an array that will store all the previous records
-      Record* array_of_record = malloc(curr_rec*sizeof(Record)); 
-      bucket_data += sizeof(HT_Block_info); 
-      for(int i=0; i<curr_rec;i++){
-        memcpy(array_of_record, bucket_data, sizeof(Record));
-      }
-
+    {
       // update local depth and record count
-
-      local_depth++;
-      curr_rec=0;
-      // copy it to the bucket info 
+      ht_bucket_info->local_depth++;
+      ht_bucket_info->records = 0;
+      // copy it to the bucket info
       memcpy(bucket_data, ht_bucket_info, sizeof(HT_Block_info));
+      // create an array that will store all the previous records
+      Record *array_of_record = malloc(max_rec * sizeof(Record)); // bucket is full so max records
+      bucket_data += sizeof(HT_Block_info);
+      for (int i = 0; i < max_rec; i++)
+      {
 
-      // create new bucket       
-      createBucket(indexDesc, local_depth);
-
-      // update total buckets in file 
-      total_buckets++;
-      void* new_data = BF_Block_GetData(first_block);
-      memcpy(new_data, ht_info, sizeof(HT_info));
-
-      // update hashtable to show to both buckets
-      correct_hashtable(p, hash_key, global_depth); 
-
-      for(int i=0; i<curr_rec; i++){
-        HT_InsertEntry(indexDesc, array_of_record[i]); 
+        memcpy(&array_of_record[i], bucket_data, sizeof(Record)); // copy each record from the bucket to the array of records
+        bucket_data = bucket_data + sizeof(Record);
       }
 
+      for (int i = 0; i < max_rec; i++)
+      {
+        printf("%s \n", array_of_record[i].name);
+      }
+      // create new bucket
+      createBucket(indexDesc, local_depth + 1);
+
+      BF_Block *new_block;
+      BF_Block_Init(&new_block);
+      CALL_BF(BF_GetBlock(indexDesc, 0, new_block)); // get the first block again to update info about total buckets
+
+      HT_info *new_ht_info = malloc(sizeof(HT_info));
+
+      void *new_data = BF_Block_GetData(new_block);
+
+      memcpy(new_ht_info, new_data, sizeof(HT_info));
+
+      new_ht_info->bucket_num++; // update number of buckets
+
+      memcpy(new_data, new_ht_info, sizeof(HT_info)); // copy the updated info
+
+      int counter = 0;
+      for (int i = 0; i < pow(2, global_depth); i++)
+      {
+        if (p[i] == p[hash_key])
+        { // run the hash table,if u find "pointer" pointing to the same bucket as the full bucket then store its cell number to an array
+          counter++;
+        }
+      }
+
+      int *position_array = malloc(sizeof(int) * counter);
+      int j = 0;
+      for (int i = 0; i < pow(2, global_depth); i++)
+      {
+        if (p[i] == p[hash_key])
+        { // run the hash table,if u find "pointer" pointing to the same bucket as the full bucket then store its cell number to an array
+          position_array[j] = i;
+          j++;
+        }
+      }
+
+      printf("position array\n\n");
+
+      for (int i = 0; i < counter; i++)
+      {
+        printf("%d \n", position_array[i]); // this is the poisiton array ,the inside of these cells must be changed,half of the pointer should point to the old bucket,and half of them to the new bucket created
+      }
+      printf("\n");
+      printf("buckets %d\n", new_ht_info->bucket_num);
+      for (int i = counter / 2; i < counter; i++)
+      { // the first half pointers will stay the same,the second half pointers will point to the new bucket created
+        p[position_array[i]] = new_ht_info->bucket_num;
+      }
+      new_data += sizeof(HT_info);         // go to the position where the hash table is stored
+      memcpy(new_data, &p, sizeof(int *)); // copy the updated array
+      for (int i = 0; i < max_rec; i++)
+      {
+        HT_InsertEntry(indexDesc, array_of_record[i]); // rehash all records from the splited bucket
+      }
+      BF_Block_SetDirty(new_block);
+      CALL_BF(BF_UnpinBlock(new_block));
+      BF_Block_Destroy(&new_block);
     }
-
-    bucket_data += sizeof(HT_Block_info) + (sizeof(Record) * curr_rec);
   }
-
-  BF_Block_SetDirty(first_block);
-  CALL_BF(BF_UnpinBlock(first_block));
-  BF_Block_Destroy(&first_block);
-
+  BF_Block_SetDirty(bucket);
+  CALL_BF(BF_UnpinBlock(bucket));
+  BF_Block_Destroy(&bucket);
   return HT_OK;
 }
 
@@ -309,10 +374,12 @@ int *expandingHashTable(int *hashtable, int size)
     pos = extract_bits(i);
     new_hashtable[i] = hashtable[pos];
   }
-
-  for(int i =0; i<size; i++){
-    printf("new %d\n", new_hashtable[i]);
+  printf("new hash table \n");
+  for (int i = 0; i < size; i++)
+  {
+    printf("%d\n", new_hashtable[i]);
   }
+  printf("\n");
 
   return new_hashtable;
 }
@@ -323,10 +390,10 @@ HT_ErrorCode correct_hashtable(int *hashtable, int hashkey, int depth)
 {
   int pointers_num, index;
   int size = pow(2, depth);
-  index = hashtable[hashkey]; 
+  index = hashtable[hashkey];
   for (int i = 0; i < size; i++)
   {
-    if(hashtable[i]==index)
+    if (hashtable[i] == index)
       pointers_num++;
   }
   printf("pointers num %d\n", pointers_num);
@@ -340,13 +407,12 @@ int extract_bits(int k)
   return k >> 1;
 }
 
-
 // Initializes and creates an empty Block(Bucket)
 
 HT_ErrorCode createBucket(int file_desc, int local_depth)
 {
 
-  HT_Block_info bf_info;
+  HT_Block_info *bf_info = malloc(sizeof(HT_Block_info));
   BF_Block *new_bucket;
   BF_Block_Init(&new_bucket);
   CALL_BF(BF_AllocateBlock(file_desc, new_bucket));
@@ -355,16 +421,27 @@ HT_ErrorCode createBucket(int file_desc, int local_depth)
   if (data == NULL)
     return HT_ERROR;
 
-  bf_info.max_records = floor((BF_BLOCK_SIZE - sizeof(HT_Block_info *)) / sizeof(Record));
-  bf_info.records = 0;
-  bf_info.local_depth = local_depth;
+  bf_info->max_records = floor((BF_BLOCK_SIZE - sizeof(HT_Block_info *)) / sizeof(Record));
+  bf_info->records = 0;
+  bf_info->local_depth = local_depth;
 
-  memcpy(data, &bf_info, sizeof(HT_Block_info));
+  memcpy(data, bf_info, sizeof(HT_Block_info));
 
   BF_Block_SetDirty(new_bucket); // set the block dirty
   CALL_BF(BF_UnpinBlock(new_bucket));
   BF_Block_Destroy(&new_bucket);
 
-  return HT_OK; 
-
+  printf("created a new bucket with local depth %d\n\n", local_depth);
+  return HT_OK;
 }
+
+/// insert sxediagrama
+
+// 1.init first block ,take 0 block that contains ht info and hash table
+// 2.init bucket ,take hash_table[hashed_key] bucket number,get values from ht_block_info
+// 3. check if local == global
+
+// kapoia den exoun ginei free
+
+// sto global > local ,sthn arxh nai men kanoume copy ola ta records apo to bucket kai meta ta kanoume redistribute,kai isws leitourghseu
+// epeidh thetoume current records=0,alla den ta diagrafoume pote apo htn mnmh tou block
