@@ -71,11 +71,12 @@ int main()
   Record record;
   srand(12569874);
   int r;
+
   printf("Insert Entries\n");
-  for (int id = 0; id < 20; ++id)
+  for (int id = 0; id < RECORDS_NUM; ++id)
   {
     // create a record
-    record.id = rand() % 30;
+    record.id = rand() % RECORDS_NUM;
     r = rand() % 12;
     memcpy(record.name, names[r], strlen(names[r]) + 1);
     r = rand() % 12;
@@ -85,12 +86,18 @@ int main()
 
     CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
   }
-
-  // printf("RUN PrintAllEntries\n");
-  // int id = rand() % RECORDS_NUM;
-  // CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
-  // //CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
-
+  printf("\n\n\n");
+  printf("RUN PrintAllEntries\n");
+  printf("\n\n\n");
+  int id = 17;
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
+  printf("\n\n\n");
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
+  printf("\n\n\n");
+  printf("RUN HashStatistics\n\n");
+  HT_HashStatistics(FILE_NAME, indexDesc);
+  printf("\n\n\n");
   CALL_OR_DIE(HT_CloseFile(indexDesc));
   BF_Close();
+  remove("data.db");
 }

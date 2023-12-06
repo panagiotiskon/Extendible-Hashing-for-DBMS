@@ -162,7 +162,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   hash_key = reverseBits(bitExtracted(record.id, global_depth, 1), global_depth);
 
-  printf("hashed key %d record id %d total buckets %d global depth %d\n\n", hash_key, record.id, total_buckets, global_depth);
+  // printf("hashed key %d record id %d total buckets %d global depth %d\n\n", hash_key, record.id, total_buckets, global_depth);
 
   // calculate offset
 
@@ -171,13 +171,13 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   memcpy(&p, data, sizeof(p));
 
-  printf("hash table\n");
+  /*printf("hash table\n");
   for (int i = 0; i < pow(2, global_depth); i++)
   {
     printf("%d\n", p[i]);
   }
   printf("\n\n");
-
+  */
   free(ht_info);
 
   BF_Block_SetDirty(first_block);
@@ -195,7 +195,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
   max_rec = ht_bucket_info->max_records;
   curr_rec = ht_bucket_info->records;
   local_depth = ht_bucket_info->local_depth;
-  printf("current records into current bucket %d and current bucket %d\n\n", curr_rec, p[hash_key]);
+  // printf("current records into current bucket %d and current bucket %d\n\n", curr_rec, p[hash_key]);
 
   if (curr_rec < max_rec) // if record can fit into the bucket
   {
@@ -230,7 +230,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
       memcpy(new_data, new_ht_info, sizeof(HT_info)); // update global depth
 
-      printf("new global depth %d \n\n", global_depth);
+      // printf("new global depth %d \n\n", global_depth);
 
       int *new_hashtable = expandingHashTable(p, new_size); // create new array
 
@@ -264,10 +264,10 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
         bucket_data = bucket_data + sizeof(Record);
       }
 
-      for (int i = 0; i < max_rec; i++)
+      /*for (int i = 0; i < max_rec; i++)
       {
         printf("%s \n", array_of_record[i].name);
-      }
+      }*/
       // create new bucket
       createBucket(indexDesc, local_depth + 1);
 
@@ -305,20 +305,21 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
         }
       }
 
-      printf("position array\n\n");
+      // printf("position array\n\n");
 
-      for (int i = 0; i < counter; i++)
+      /*for (int i = 0; i < counter; i++)
       {
         printf("%d \n", position_array[i]); // this is the poisiton array ,the inside of these cells must be changed,half of the pointer should point to the old bucket,and half of them to the new bucket created
       }
       printf("\n");
-      printf("buckets %d\n", new_ht_info->bucket_num);
+      printf("buckets %d\n", new_ht_info->bucket_num);*/
       for (int i = counter / 2; i < counter; i++)
       { // the first half pointers will stay the same,the second half pointers will point to the new bucket created
         p[position_array[i]] = new_ht_info->bucket_num;
       }
       new_data += sizeof(HT_info);         // go to the position where the hash table is stored
       memcpy(new_data, &p, sizeof(int *)); // copy the updated array
+      HT_InsertEntry(indexDesc, record);   // first insert the record id given
       for (int i = 0; i < max_rec; i++)
       {
         HT_InsertEntry(indexDesc, array_of_record[i]); // rehash all records from the splited bucket
@@ -336,14 +337,180 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
 HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id)
 {
-  // insert code here
+
+  BF_Block *first_block;
+  BF_Block_Init(&first_block);
+  CALL_BF(BF_GetBlock(indexDesc, 0, first_block));
+
+  HT_info *ht_info = malloc(sizeof(HT_info));
+
+  // get first block data
+
+  void *data = BF_Block_GetData(first_block);
+
+  memcpy(ht_info, data, sizeof(HT_info));
+
+  int global_depth = ht_info->global_depth;
+
+  int hash_table_size = pow(2, global_depth);
+
+  int *hash_table = malloc(hash_table_size * sizeof(int));
+
+  data += sizeof(HT_info);
+
+  memcpy(&hash_table, data, sizeof(int *)); // get hash table from first block
+  if (id != NULL)
+  {
+
+    int hash_key = reverseBits(bitExtracted(*id, global_depth, 1), global_depth); // find hash key for this record id
+
+    // get the block(bucket) number that exists in this hash key array id
+    BF_Block *bucket;
+    BF_Block_Init(&bucket);
+    CALL_BF(BF_GetBlock(indexDesc, hash_table[hash_key], bucket));
+
+    HT_Block_info *ht_b_info = malloc(sizeof(HT_Block_info));
+
+    void *bucket_data = BF_Block_GetData(bucket);
+
+    memcpy(ht_b_info, bucket_data, sizeof(ht_b_info));
+
+    int records_in_bucket = ht_b_info->records;
+
+    bucket_data += sizeof(HT_Block_info);
+    int flag = 0;
+    for (int i = 0; i < records_in_bucket; i++)
+    {
+      Record rec;
+      memcpy(&rec, bucket_data, sizeof(Record)); // get each record from bucket
+      if (rec.id == *id)
+      {
+        printf("%s %d %s %s \n", rec.city, rec.id, rec.name, rec.surname);
+        flag = 1;
+      }
+      bucket_data = bucket_data + sizeof(Record);
+    }
+    if (flag == 0)
+    {
+      printf("id %d doesnt exist in the hash table\n\n", *id);
+    }
+    free(ht_b_info);
+    BF_Block_SetDirty(bucket);
+    CALL_BF(BF_UnpinBlock(bucket));
+    BF_Block_Destroy(&bucket);
+  }
+  else
+  {
+    free(hash_table);
+    // if id == null print every element of the hash table
+    int num_of_buckets = ht_info->bucket_num; // get number of buckets
+    int counter = 0;
+    for (int i = 0; i < num_of_buckets; i++)
+    {
+      BF_Block *bucket;
+      BF_Block_Init(&bucket);
+      CALL_BF(BF_GetBlock(indexDesc, i + 1, bucket)); // get each bucket
+
+      HT_Block_info *ht_b_info = malloc(sizeof(HT_Block_info));
+
+      void *bucket_data = BF_Block_GetData(bucket);
+
+      memcpy(ht_b_info, bucket_data, sizeof(ht_b_info));
+
+      int num_of_records = ht_b_info->records; // get number of records in current bucket
+
+      bucket_data += sizeof(HT_Block_info); // go to records
+
+      for (int j = 0; j < num_of_records; j++)
+      {
+        Record rec;
+        memcpy(&rec, bucket_data, sizeof(Record));
+        printf("%s %d %s %s \n", rec.city, rec.id, rec.name, rec.surname);
+        bucket_data += sizeof(Record);
+        counter++;
+      }
+
+      free(ht_b_info);
+
+      BF_Block_SetDirty(bucket);
+      CALL_BF(BF_UnpinBlock(bucket));
+      BF_Block_Destroy(&bucket);
+    }
+    printf("Total records in hash table %d\n", counter);
+  }
+  free(ht_info);
+  BF_Block_SetDirty(first_block);
+  CALL_BF(BF_UnpinBlock(first_block));
+  BF_Block_Destroy(&first_block);
+
   return HT_OK;
 }
 
-HT_ErrorCode HT_HashStatistics(char *filename)
+HT_ErrorCode HT_HashStatistics(char *filename, int indexDesc)
 {
-  // insert code here
+  BF_Block *first_block;
+  BF_Block_Init(&first_block);
+  CALL_BF(BF_GetBlock(indexDesc, 0, first_block));
 
+  HT_info *ht_info = malloc(sizeof(HT_info));
+
+  // get first block data
+
+  void *data = BF_Block_GetData(first_block);
+
+  memcpy(ht_info, data, sizeof(HT_info));
+
+  int buckets_num = ht_info->bucket_num; // get bucket number
+
+  printf("File with name %s , has %d blocks(buckets) and 1 more block for the hash table and its info,total %d blocks\n", filename, buckets_num, buckets_num + 1);
+  int max = -1;
+  int min = 999;
+  int counter;
+  int total_records = 0;
+  for (int i = 0; i < buckets_num; i++)
+  {
+    counter = 0;
+    BF_Block *bucket;
+    BF_Block_Init(&bucket);
+    CALL_BF(BF_GetBlock(indexDesc, i + 1, bucket)); // get each bucket
+
+    HT_Block_info *ht_b_info = malloc(sizeof(HT_Block_info));
+
+    void *bucket_data = BF_Block_GetData(bucket);
+
+    memcpy(ht_b_info, bucket_data, sizeof(ht_b_info));
+
+    int num_of_records = ht_b_info->records; // get number of records in current bucket
+
+    bucket_data += sizeof(HT_Block_info); // go to records
+
+    for (int j = 0; j < num_of_records; j++)
+    {
+      Record rec;
+      memcpy(&rec, bucket_data, sizeof(Record));
+      bucket_data += sizeof(Record);
+      counter++;
+    }
+    if (counter < min)
+    {
+      min = counter;
+    }
+    if (counter > max)
+    {
+      max = counter;
+    }
+    free(ht_b_info);
+    total_records = total_records + counter;
+    BF_Block_SetDirty(bucket);
+    CALL_BF(BF_UnpinBlock(bucket));
+    BF_Block_Destroy(&bucket);
+  }
+  free(ht_info);
+  BF_Block_SetDirty(first_block);
+  CALL_BF(BF_UnpinBlock(first_block));
+  BF_Block_Destroy(&first_block);
+  printf("\n");
+  printf("The minimum number of records in one block is %d,the maximum is %d and the average is %d \n", min, max, total_records / buckets_num);
   return HT_OK;
 }
 
@@ -374,12 +541,12 @@ int *expandingHashTable(int *hashtable, int size)
     pos = extract_bits(i);
     new_hashtable[i] = hashtable[pos];
   }
-  printf("new hash table \n");
+  /*printf("new hash table \n");
   for (int i = 0; i < size; i++)
   {
     printf("%d\n", new_hashtable[i]);
   }
-  printf("\n");
+  printf("\n");*/
 
   return new_hashtable;
 }
@@ -396,7 +563,7 @@ HT_ErrorCode correct_hashtable(int *hashtable, int hashkey, int depth)
     if (hashtable[i] == index)
       pointers_num++;
   }
-  printf("pointers num %d\n", pointers_num);
+  // printf("pointers num %d\n", pointers_num);
   return HT_OK;
 }
 
@@ -431,17 +598,8 @@ HT_ErrorCode createBucket(int file_desc, int local_depth)
   CALL_BF(BF_UnpinBlock(new_bucket));
   BF_Block_Destroy(&new_bucket);
 
-  printf("created a new bucket with local depth %d\n\n", local_depth);
+  // printf("created a new bucket with local depth %d\n\n", local_depth);
   return HT_OK;
 }
 
-/// insert sxediagrama
-
-// 1.init first block ,take 0 block that contains ht info and hash table
-// 2.init bucket ,take hash_table[hashed_key] bucket number,get values from ht_block_info
-// 3. check if local == global
-
-// kapoia den exoun ginei free
-
-// sto global > local ,sthn arxh nai men kanoume copy ola ta records apo to bucket kai meta ta kanoume redistribute,kai isws leitourghseu
-// epeidh thetoume current records=0,alla den ta diagrafoume pote apo htn mnmh tou block
+// ta prints me kalutero format,nees sunarthseis ,free opou den gnetai,debug giat trwme segme meta ta 89 ids.debug an einai ontws swsto to hash table kai den kanoume oti nanai

@@ -36,12 +36,11 @@ typedef struct HT_Block_info
 int bitExtracted(int number, int k, int p);
 int reverseBits(int number, int bits);
 
-
-int* expandingHashTable(int *hashtable, int size);
+int *expandingHashTable(int *hashtable, int size);
 int extract_bits(int k);
 
-HT_ErrorCode createBucket(int file_desc, int local_depth); 
-HT_ErrorCode correct_hashtable(int* hashtable, int key, int depth); 
+HT_ErrorCode createBucket(int file_desc, int local_depth);
+HT_ErrorCode correct_hashtable(int *hashtable, int key, int depth);
 
 /*
  * Η συνάρτηση HT_Init χρησιμοποιείται για την αρχικοποίηση κάποιον δομών που μπορεί να χρειαστείτε.
@@ -95,5 +94,5 @@ HT_ErrorCode HT_PrintAllEntries(
 	int indexDesc, /* θέση στον πίνακα με τα ανοιχτά αρχεία */
 	int *id		   /* τιμή του πεδίου κλειδιού προς αναζήτηση */
 );
-
+HT_ErrorCode HT_HashStatistics(char *filename, int indexDesc);
 #endif // HASH_FILE_H
