@@ -190,7 +190,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   // get hash key
 
-  hash_key = reverseBits(bitExtracted(record.id, global_depth, 1), global_depth);
+  hash_key = reverseBits(bitExtracted(record.id, global_depth, 1), global_depth); // reverse the number and then take the first global depth number bits from it
 
   // calculate offset
 
@@ -283,7 +283,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
         bucket_data = bucket_data + sizeof(Record);
       }
 
-
       // create new bucket
       createBucket(indexDesc, local_depth + 1);
 
@@ -334,14 +333,14 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
       free(new_ht_info);
       free(array_of_record);
-      free(position_array); 
+      free(position_array);
       BF_Block_SetDirty(new_block);
       CALL_BF(BF_UnpinBlock(new_block));
       BF_Block_Destroy(&new_block);
     }
   }
 
-  //free(p);
+  // free(p);
   free(ht_bucket_info);
 
   BF_Block_SetDirty(bucket);
@@ -531,11 +530,11 @@ HT_ErrorCode HT_HashStatistics(char *filename, int indexDesc)
   return HT_OK;
 }
 
-int bitExtracted(int number, int k, int p)
+int bitExtracted(int number, int k, int p) // extraxt number of bits(k bits) from a number starting from a p location
 {
   return (((1 << k) - 1) & (number >> (p - 1)));
 }
-int reverseBits(int number, int bits)
+int reverseBits(int number, int bits) // take a number and reverse his bits
 {
   int reversedNumber = 0;
   for (int i = 0; i < bits; i++)
@@ -556,9 +555,9 @@ int *expandingHashTable(int *hashtable, int size)
   for (int i = 0; i < size; i++)
   {
     pos = extract_bits(i);
-    //memcpy(&new_hashtable[i], &hashtable[pos], sizeof(int));
+    // memcpy(&new_hashtable[i], &hashtable[pos], sizeof(int));
     new_hashtable[i] = hashtable[pos];
-  } 
+  }
 
   return new_hashtable;
 }
@@ -597,4 +596,3 @@ HT_ErrorCode createBucket(int file_desc, int local_depth)
 
   return HT_OK;
 }
-

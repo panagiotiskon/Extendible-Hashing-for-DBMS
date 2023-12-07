@@ -6,7 +6,7 @@
 #include "hash_file.h"
 
 #define RECORDS_NUM 1000 // you can change it if you want
-#define GLOBAL_DEPT 1    // you can change it if you want
+#define GLOBAL_DEPT 2    // you can change it if you want
 #define FILE_NAME "data.db"
 
 const char *names[] = {
@@ -68,36 +68,30 @@ int main()
   int indexDesc;
   CALL_OR_DIE(HT_CreateIndex(FILE_NAME, GLOBAL_DEPT));
   CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc));
+
   Record record;
   srand(12569874);
   int r;
-
   printf("Insert Entries\n");
   for (int id = 0; id < RECORDS_NUM; ++id)
   {
     // create a record
-    record.id = rand() % RECORDS_NUM;
+    record.id = id;
     r = rand() % 12;
     memcpy(record.name, names[r], strlen(names[r]) + 1);
     r = rand() % 12;
     memcpy(record.surname, surnames[r], strlen(surnames[r]) + 1);
     r = rand() % 10;
     memcpy(record.city, cities[r], strlen(cities[r]) + 1);
+
     CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
   }
-  printf("\n\n");
+
   printf("RUN PrintAllEntries\n");
-  printf("\n\n");
-  int id = 3929;
+  int id = rand() % RECORDS_NUM;
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
-  printf("\n\n");
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
-  printf("\n\n");
-  printf("RUN HashStatistics\n\n");
-  HT_HashStatistics(FILE_NAME, indexDesc);
-  printf("\n\n");
+  // CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
+
   CALL_OR_DIE(HT_CloseFile(indexDesc));
   BF_Close();
-  remove("data.db");
-  CALL_OR_DIE(HT_Close()); 
 }
