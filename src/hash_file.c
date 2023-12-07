@@ -102,7 +102,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
 
 HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc)
 {
-  int flag = 0; 
+  int flag = 0;
   CALL_BF(BF_OpenFile(fileName, indexDesc));
 
   BF_Block *block;
@@ -127,19 +127,19 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc)
       if (hash_file_array[i].file_desc == -1)
       {
         memcpy(&hash_file_array[i], data, sizeof(HT_info));
-        flag = 1; 
+        flag = 1;
         break;
       }
     }
   }
 
-  if(flag == 0 ){
+  if (flag == 0)
+  {
     printf("Can not open any more files!");
-    return HT_ERROR; 
+    return HT_ERROR;
   }
 
-  free(ht_info);  // hash_file_array[file_desc] = ht_info;   <-----------------------------------
-
+  free(ht_info); // hash_file_array[file_desc] = ht_info;   <-----------------------------------
 
   CALL_BF(BF_UnpinBlock(block));
   BF_Block_Destroy(&block);
