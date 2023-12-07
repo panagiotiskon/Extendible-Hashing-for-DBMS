@@ -126,7 +126,7 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc)
   {
     for (int i = 0; i < MAX_OPEN_FILES; i++)
     {
-      if (hash_file_array[i].file_desc != -1)
+      if (hash_file_array[i].file_desc == -1)
       {
         memcpy(&hash_file_array[i], data, sizeof(HT_info));
         break;
@@ -161,6 +161,7 @@ HT_ErrorCode HT_CloseFile(int indexDesc)
 
   return HT_OK;
 }
+
 HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 {
   int total_buckets;
@@ -555,8 +556,10 @@ int *expandingHashTable(int *hashtable, int size)
   for (int i = 0; i < size; i++)
   {
     pos = extract_bits(i);
+    //memcpy(&new_hashtable[i], &hashtable[pos], sizeof(int));
     new_hashtable[i] = hashtable[pos];
-  }
+  } 
+
   return new_hashtable;
 }
 

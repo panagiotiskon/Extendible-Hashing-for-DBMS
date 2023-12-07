@@ -88,7 +88,7 @@ int main()
   printf("\n\n");
   printf("RUN PrintAllEntries\n");
   printf("\n\n");
-  int id = 3;
+  int id = 3929;
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
   printf("\n\n");
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
