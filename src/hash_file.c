@@ -26,6 +26,12 @@ HT_ErrorCode HT_Init()
   return HT_OK;
 }
 
+HT_ErrorCode HT_Close()
+{
+  free(hash_file_array);
+  return HT_OK;
+}
+
 HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
 {
   int file_desc;
@@ -62,7 +68,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
     ht[i] = i + 1;
   }
 
-  hash_file_array[file_desc] = ht_info;
+  // hash_file_array[file_desc] = ht_info;   <-----------------------------------
 
   // save in the first block the ht_info
 
@@ -113,10 +119,22 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc)
 
   memcpy(ht_info, data, sizeof(HT_info));
 
-  // check if the opened file is a hash file
-
   if (strcmp(ht_info->type, "hash") != 0)
     return HT_ERROR;
+
+  else
+  {
+    for (int i = 0; i < MAX_OPEN_FILES; i++)
+    {
+      if (hash_file_array[i].file_desc != -1)
+      {
+        memcpy(&hash_file_array[i], data, sizeof(HT_info));
+        break;
+      }
+    }
+  }
+
+  free(ht_info);
 
   CALL_BF(BF_UnpinBlock(block));
   BF_Block_Destroy(&block);
@@ -127,11 +145,22 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc)
 HT_ErrorCode HT_CloseFile(int indexDesc)
 {
 
+  // remove the file from the Open Files Array
+
+  for (int i = 0; i < MAX_OPEN_FILES; i++)
+  {
+    if (hash_file_array[i].file_desc == indexDesc)
+    {
+      hash_file_array[i].file_desc = -1;
+    }
+  }
+
+  // Close the file
+
   CALL_BF(BF_CloseFile(indexDesc));
 
   return HT_OK;
 }
-
 HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 {
   int total_buckets;
@@ -162,8 +191,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   hash_key = reverseBits(bitExtracted(record.id, global_depth, 1), global_depth);
 
-  // printf("hashed key %d record id %d total buckets %d global depth %d\n\n", hash_key, record.id, total_buckets, global_depth);
-
   // calculate offset
 
   data += sizeof(HT_info);
@@ -171,13 +198,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
   memcpy(&p, data, sizeof(p));
 
-  /*printf("hash table\n");
-  for (int i = 0; i < pow(2, global_depth); i++)
-  {
-    printf("%d\n", p[i]);
-  }
-  printf("\n\n");
-  */
   free(ht_info);
 
   BF_Block_SetDirty(first_block);
@@ -236,8 +256,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
 
       new_data += sizeof(HT_info);
 
-      free(p);
-
       memcpy(new_data, &new_hashtable, sizeof(int *));
 
       // free old hash table
@@ -264,10 +282,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
         bucket_data = bucket_data + sizeof(Record);
       }
 
-      /*for (int i = 0; i < max_rec; i++)
-      {
-        printf("%s \n", array_of_record[i].name);
-      }*/
+
       // create new bucket
       createBucket(indexDesc, local_depth + 1);
 
@@ -284,7 +299,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
       new_ht_info->bucket_num++; // update number of buckets
 
       memcpy(new_data, new_ht_info, sizeof(HT_info)); // copy the updated info
-
       int counter = 0;
       for (int i = 0; i < pow(2, global_depth); i++)
       {
@@ -305,14 +319,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
         }
       }
 
-      // printf("position array\n\n");
-
-      /*for (int i = 0; i < counter; i++)
-      {
-        printf("%d \n", position_array[i]); // this is the poisiton array ,the inside of these cells must be changed,half of the pointer should point to the old bucket,and half of them to the new bucket created
-      }
-      printf("\n");
-      printf("buckets %d\n", new_ht_info->bucket_num);*/
       for (int i = counter / 2; i < counter; i++)
       { // the first half pointers will stay the same,the second half pointers will point to the new bucket created
         p[position_array[i]] = new_ht_info->bucket_num;
@@ -324,11 +330,19 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
       {
         HT_InsertEntry(indexDesc, array_of_record[i]); // rehash all records from the splited bucket
       }
+
+      free(new_ht_info);
+      free(array_of_record);
+      free(position_array); 
       BF_Block_SetDirty(new_block);
       CALL_BF(BF_UnpinBlock(new_block));
       BF_Block_Destroy(&new_block);
     }
   }
+
+  //free(p);
+  free(ht_bucket_info);
+
   BF_Block_SetDirty(bucket);
   CALL_BF(BF_UnpinBlock(bucket));
   BF_Block_Destroy(&bucket);
@@ -392,7 +406,7 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id)
     }
     if (flag == 0)
     {
-      printf("id %d doesnt exist in the hash table\n\n", *id);
+      printf("ID %d does not exist in the hash table\n\n", *id);
     }
     free(ht_b_info);
     BF_Block_SetDirty(bucket);
@@ -448,6 +462,11 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id)
 
 HT_ErrorCode HT_HashStatistics(char *filename, int indexDesc)
 {
+  int max = -1;
+  int min = 9999;
+  int counter;
+  int total_records = 0;
+
   BF_Block *first_block;
   BF_Block_Init(&first_block);
   CALL_BF(BF_GetBlock(indexDesc, 0, first_block));
@@ -462,11 +481,8 @@ HT_ErrorCode HT_HashStatistics(char *filename, int indexDesc)
 
   int buckets_num = ht_info->bucket_num; // get bucket number
 
-  printf("File with name %s , has %d blocks(buckets) and 1 more block for the hash table and its info,total %d blocks\n", filename, buckets_num, buckets_num + 1);
-  int max = -1;
-  int min = 999;
-  int counter;
-  int total_records = 0;
+  printf("File with name %s, has %d blocks(buckets) and 1 more block for the hash table and its info,total %d blocks\n", filename, buckets_num, buckets_num + 1);
+
   for (int i = 0; i < buckets_num; i++)
   {
     counter = 0;
@@ -510,7 +526,7 @@ HT_ErrorCode HT_HashStatistics(char *filename, int indexDesc)
   CALL_BF(BF_UnpinBlock(first_block));
   BF_Block_Destroy(&first_block);
   printf("\n");
-  printf("The minimum number of records in one block is %d,the maximum is %d and the average is %d \n", min, max, total_records / buckets_num);
+  printf("The minimum number of records in a block is %d\nThe maximum number of records in a block is %d\nThe average number of records in a block is %d \n", min, max, total_records / buckets_num);
   return HT_OK;
 }
 
@@ -541,30 +557,7 @@ int *expandingHashTable(int *hashtable, int size)
     pos = extract_bits(i);
     new_hashtable[i] = hashtable[pos];
   }
-  /*printf("new hash table \n");
-  for (int i = 0; i < size; i++)
-  {
-    printf("%d\n", new_hashtable[i]);
-  }
-  printf("\n");*/
-
   return new_hashtable;
-}
-
-// when a new bucket is created correct properly the hashtable
-
-HT_ErrorCode correct_hashtable(int *hashtable, int hashkey, int depth)
-{
-  int pointers_num, index;
-  int size = pow(2, depth);
-  index = hashtable[hashkey];
-  for (int i = 0; i < size; i++)
-  {
-    if (hashtable[i] == index)
-      pointers_num++;
-  }
-  // printf("pointers num %d\n", pointers_num);
-  return HT_OK;
 }
 
 // extract k-1 bits from k bit number
@@ -593,13 +586,12 @@ HT_ErrorCode createBucket(int file_desc, int local_depth)
   bf_info->local_depth = local_depth;
 
   memcpy(data, bf_info, sizeof(HT_Block_info));
+  free(bf_info);
 
   BF_Block_SetDirty(new_bucket); // set the block dirty
   CALL_BF(BF_UnpinBlock(new_bucket));
   BF_Block_Destroy(&new_bucket);
 
-  // printf("created a new bucket with local depth %d\n\n", local_depth);
   return HT_OK;
 }
 
-// ta prints me kalutero format,nees sunarthseis ,free opou den gnetai,debug giat trwme segme meta ta 89 ids.debug an einai ontws swsto to hash table kai den kanoume oti nanai

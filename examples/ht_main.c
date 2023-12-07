@@ -83,21 +83,21 @@ int main()
     memcpy(record.surname, surnames[r], strlen(surnames[r]) + 1);
     r = rand() % 10;
     memcpy(record.city, cities[r], strlen(cities[r]) + 1);
-
     CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
   }
-  printf("\n\n\n");
+  printf("\n\n");
   printf("RUN PrintAllEntries\n");
-  printf("\n\n\n");
-  int id = 17;
+  printf("\n\n");
+  int id = 3;
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
-  printf("\n\n\n");
+  printf("\n\n");
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
-  printf("\n\n\n");
+  printf("\n\n");
   printf("RUN HashStatistics\n\n");
   HT_HashStatistics(FILE_NAME, indexDesc);
-  printf("\n\n\n");
+  printf("\n\n");
   CALL_OR_DIE(HT_CloseFile(indexDesc));
   BF_Close();
   remove("data.db");
+  CALL_OR_DIE(HT_Close()); 
 }

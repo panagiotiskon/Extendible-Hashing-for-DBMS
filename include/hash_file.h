@@ -31,8 +31,6 @@ typedef struct HT_Block_info
 
 } HT_Block_info;
 
-// Hash Function that returns key based on the record id and the total number of buckets
-
 int bitExtracted(int number, int k, int p);
 int reverseBits(int number, int bits);
 
@@ -47,6 +45,10 @@ HT_ErrorCode correct_hashtable(int *hashtable, int key, int depth);
  * Σε περίπτωση που εκτελεστεί επιτυχώς, επιστρέφεται HT_OK, ενώ σε διαφορετική περίπτωση κωδικός λάθους.
  */
 HT_ErrorCode HT_Init();
+
+// Συναρτηση για την απελευθέρωση δεσμευμένων δομών από την HT_Init
+
+HT_ErrorCode HT_Close();
 
 /*
  * Η συνάρτηση HT_CreateIndex χρησιμοποιείται για τη δημιουργία και κατάλληλη αρχικοποίηση ενός άδειου αρχείου κατακερματισμού με όνομα fileName.
