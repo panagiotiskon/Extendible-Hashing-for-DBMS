@@ -10,7 +10,7 @@
 #include "hash_file.h"
 
 #define RECORDS_NUM 1000 // you can change it if you want
-#define GLOBAL_DEPT 2    // you can change it if you want
+#define GLOBAL_DEPT 1    // you can change it if you want
 
 const char *names[] = {
     "Yannis",
@@ -148,6 +148,14 @@ int main()
 
     // CALL_OR_DIE(HT_PrintAllEntries(indexDesc3, NULL));
     // printf("\n\n");
+    HT_HashStatistics((char *)fnames[0], indexDesc1);
+    printf("\n\n");
+
+    HT_HashStatistics((char *)fnames[1], indexDesc2);
+    printf("\n\n");
+
+    HT_HashStatistics((char *)fnames[2], indexDesc3);
+    printf("\n\n");
 
     CALL_OR_DIE(HT_CloseFile(indexDesc1));
 
