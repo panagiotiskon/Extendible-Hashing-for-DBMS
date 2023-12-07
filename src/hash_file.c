@@ -68,8 +68,6 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
     ht[i] = i + 1;
   }
 
-  // hash_file_array[file_desc] = ht_info;   <-----------------------------------
-
   // save in the first block the ht_info
 
   memcpy(data, &ht_info, sizeof(HT_info));
@@ -104,7 +102,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth)
 
 HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc)
 {
-
+  int flag = 0; 
   CALL_BF(BF_OpenFile(fileName, indexDesc));
 
   BF_Block *block;
@@ -129,12 +127,19 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc)
       if (hash_file_array[i].file_desc == -1)
       {
         memcpy(&hash_file_array[i], data, sizeof(HT_info));
+        flag = 1; 
         break;
       }
     }
   }
 
-  free(ht_info);
+  if(flag == 0 ){
+    printf("Can not open any more files!");
+    return HT_ERROR; 
+  }
+
+  free(ht_info);  // hash_file_array[file_desc] = ht_info;   <-----------------------------------
+
 
   CALL_BF(BF_UnpinBlock(block));
   BF_Block_Destroy(&block);
@@ -216,7 +221,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record)
   max_rec = ht_bucket_info->max_records;
   curr_rec = ht_bucket_info->records;
   local_depth = ht_bucket_info->local_depth;
-  // printf("current records into current bucket %d and current bucket %d\n\n", curr_rec, p[hash_key]);
 
   if (curr_rec < max_rec) // if record can fit into the bucket
   {

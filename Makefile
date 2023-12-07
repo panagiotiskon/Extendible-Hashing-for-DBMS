@@ -1,11 +1,11 @@
 ht:
 	@echo " Compile ht_main ...";
 	gcc -I ./include/ -L ./lib/ -Wl,-rpath,./lib/ ./examples/ht_main.c ./src/hash_file.c -lbf -o ./build/runner -O2 -lm
-test_main1:
-	@echo " Compile test_main1 ...";
+main1:
+	@echo " Compile main1 ...";
 	gcc -I ./include/ -L ./lib/ -Wl,-rpath,./lib/ ./examples/test_main1.c ./src/hash_file.c -lbf -o ./build/runner -O2 -lm
-test_main2:
-	@echo " Compile test_main2 ...";
+main2:
+	@echo " Compile main2 ...";
 	gcc -I ./include/ -L ./lib/ -Wl,-rpath,./lib/ ./examples/test_main2.c ./src/hash_file.c -lbf -o ./build/runner -O2 -lm
 bf:
 	@echo " Compile bf_main ...";
