@@ -23,7 +23,7 @@ If each block of memory can have only 2 records the hash file after all insertio
 
 # How to run:
 
-The program can be run by two different main functions. This first one inserts a large number of records in a file and the second one creates and inserts records into tree different files simultaneously.
+The program can be run by two different main functions. This first one inserts a large number of records in a file and the second one creates and inserts records into three different files simultaneously.
 
 
 test_main1: 
