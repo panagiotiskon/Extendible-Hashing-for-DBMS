@@ -11,7 +11,7 @@ For instance, you have this table of records:
 ID | NAME      | SURNAME       | CITY
 -- | --------- | ------------- | ----
 26  | Maria     | Koronis       | Hong Kong
-14  | Christofos| Gaitanis      | Tokyo
+14  | Christoforos| Gaitanis      | Tokyo
 16  | Marianna  | Karvounari    | Miami 
 12  | Theofilos | Nikolopoulos  | London  
 10  | Iosif     | Svingos       | Tokyo
