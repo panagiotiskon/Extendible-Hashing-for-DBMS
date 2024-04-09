@@ -35,6 +35,5 @@ test_main2:
     make main2
     ./build/runner
 
-### For a more detailed description of the project read here: 
+### For a more detailed description of the project [read here](https://github.com/panagiotiskon/Extendible-Hashing-for-DBMS/files/13614287/README.3.pdf): 
 
-[README (3).pdf](https://github.com/panagiotiskon/Extendible-Hashing-for-DBMS/files/13614287/README.3.pdf)
